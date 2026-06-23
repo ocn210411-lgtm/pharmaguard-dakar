@@ -169,6 +169,13 @@ export default function CommunePage({ commune, nuitThisWeek, dimancheThisWeek, w
           .tabs-wrap{width:100%}
           .tab{flex:1;justify-content:center;padding:.55rem .7rem;font-size:.8rem}
           .search-overlay{padding-top:40px}
+          .navbar{padding:.75rem 1rem}
+          .navbar-brand{font-size:.88rem}
+          .navbar-title{font-size:.88rem}
+          .navbar-brand-text{display:none}
+        }
+        @media(max-width:360px){
+          .navbar-title-text{display:none}
         }
       `}</style>
 
@@ -176,12 +183,16 @@ export default function CommunePage({ commune, nuitThisWeek, dimancheThisWeek, w
       <nav className="navbar">
         {isSingleZone ? (
           <span className="navbar-brand">
-            <i className="fas fa-shield-alt"></i> PharmaGarde
+            <i className="fas fa-shield-alt"></i>
+            <span className="navbar-brand-text"> PharmaGarde</span>
           </span>
         ) : (
           <a href="/" className="navbar-back"><i className="fas fa-chevron-left"></i> Accueil</a>
         )}
-        <span className="navbar-title"><i className="fas fa-map-marker-alt"></i> {commune.name}</span>
+        <span className="navbar-title">
+          <i className="fas fa-map-marker-alt"></i>
+          <span className="navbar-title-text"> {commune.name}</span>
+        </span>
         <button className="navbar-action" title="Rechercher" onClick={() => setSearchOpen(true)}>
           <i className="fas fa-search"></i>
         </button>
