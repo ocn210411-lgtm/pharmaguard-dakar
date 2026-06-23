@@ -70,14 +70,17 @@ export default function CommunePage({ commune, nuitThisWeek, dimancheThisWeek, w
           background:linear-gradient(135deg,rgba(0,174,239,.97),rgba(0,119,182,.97));
           padding:.85rem 1.5rem;display:flex;align-items:center;justify-content:space-between;
           position:sticky;top:0;z-index:999;box-shadow:0 2px 16px rgba(0,119,182,.25);
+          gap:.5rem;
         }
-        .navbar-back{color:white;text-decoration:none;font-weight:700;display:flex;align-items:center;gap:.5rem;padding:.45rem .85rem;border-radius:8px;background:rgba(255,255,255,.15);transition:background var(--transition);font-size:.9rem}
+        .navbar-back{color:white;text-decoration:none;font-weight:700;display:flex;align-items:center;gap:.5rem;padding:.45rem .85rem;border-radius:8px;background:rgba(255,255,255,.15);transition:background var(--transition);font-size:.9rem;flex-shrink:0}
         .navbar-back:hover{background:rgba(255,255,255,.25)}
-        .navbar-title{color:white;font-weight:800;font-size:1rem;display:flex;align-items:center;gap:.5rem}
+        .navbar-title{color:white;font-weight:800;font-size:1rem;display:flex;align-items:center;gap:.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;justify-content:center}
+        .navbar-title-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .navbar-action{color:rgba(255,255,255,.85);background:none;border:none;cursor:pointer;padding:.45rem .7rem;border-radius:8px;transition:background var(--transition);font-size:1rem}
         .navbar-action:hover{background:rgba(255,255,255,.18);color:white}
-        .navbar-brand{color:white;font-weight:800;font-size:1rem;display:flex;align-items:center;gap:.5rem;letter-spacing:-.01em}
+        .navbar-brand{color:white;font-weight:800;font-size:1rem;display:flex;align-items:center;gap:.5rem;letter-spacing:-.01em;flex-shrink:0}
         .navbar-brand i{color:rgba(255,255,255,.75)}
+        .navbar-action{flex-shrink:0}
         .commune-hero{background:linear-gradient(150deg,var(--primary),var(--primary-dark),#004f78);color:white;padding:2.5rem 1.5rem 4.5rem;text-align:center;position:relative;overflow:hidden}
         .commune-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 70%,rgba(255,255,255,.08) 0%,transparent 55%),radial-gradient(ellipse at 80% 20%,rgba(0,212,255,.1) 0%,transparent 55%);pointer-events:none}
         .commune-hero-content{position:relative;z-index:1}
@@ -169,13 +172,9 @@ export default function CommunePage({ commune, nuitThisWeek, dimancheThisWeek, w
           .tabs-wrap{width:100%}
           .tab{flex:1;justify-content:center;padding:.55rem .7rem;font-size:.8rem}
           .search-overlay{padding-top:40px}
-          .navbar{padding:.75rem 1rem}
-          .navbar-brand{font-size:.88rem}
-          .navbar-title{font-size:.88rem}
+          .navbar{padding:.7rem 1rem}
           .navbar-brand-text{display:none}
-        }
-        @media(max-width:360px){
-          .navbar-title-text{display:none}
+          .navbar-title{font-size:.92rem}
         }
       `}</style>
 
