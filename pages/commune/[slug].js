@@ -1,4 +1,5 @@
 import Head from 'next/head'
+import { useState, useEffect, useRef } from 'react'
 import { getCommuneBySlug, getWeekGuards, getGuardsByDateRange, getPharmaciesByCommune } from '../../lib/functions'
 
 const MOIS_FR = ['','janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre']
@@ -7,13 +8,40 @@ const JOURS_FR = ['dim','lun','mar','mer','jeu','ven','sam']
 function h(s) { return String(s || '') }
 
 export default function CommunePage({ commune, nuitThisWeek, dimancheThisWeek, weekStartStr, weekEndStr, dates, schedule, allPharms, pharmsJs, isSingleZone }) {
-  const weekStart = new Date(weekStartStr)
-  const weekEnd   = new Date(weekEndStr)
+  const weekStart = new Date(weekStartStr + 'T12:00:00')
+  const weekEnd   = new Date(weekEndStr   + 'T12:00:00')
   const today     = new Date().toISOString().split('T')[0]
   const isSunday  = new Date().getDay() === 0
 
   const thisSunday = new Date(weekStart)
   thisSunday.setDate(thisSunday.getDate() + 1)
+
+  // ── State React ──────────────────────────────────────────────
+  const [activeTab, setActiveTab]         = useState('today')
+  const [searchOpen, setSearchOpen]       = useState(false)
+  const [searchQuery, setSearchQuery]     = useState('')
+  const [pharmModal, setPharmModal]       = useState(null)
+  const searchInputRef                    = useRef(null)
+
+  useEffect(() => {
+    if (searchOpen) setTimeout(() => searchInputRef.current?.focus(), 80)
+  }, [searchOpen])
+
+  useEffect(() => {
+    const handleKey = e => { if (e.key === 'Escape') { setSearchOpen(false); setSearchQuery(''); setPharmModal(null) } }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [])
+
+  // ── Recherche ────────────────────────────────────────────────
+  const q = searchQuery.trim().toLowerCase()
+  const matches = q ? pharmsJs.filter(p =>
+    p.name.toLowerCase().includes(q) ||
+    p.doctor.toLowerCase().includes(q) ||
+    p.address.toLowerCase().includes(q)
+  ) : []
+  const gardesResults = matches.filter(p => p.garde)
+  const autresResults = matches.filter(p => !p.garde)
 
   return (
     <>
@@ -154,27 +182,52 @@ export default function CommunePage({ commune, nuitThisWeek, dimancheThisWeek, w
           <a href="/" className="navbar-back"><i className="fas fa-chevron-left"></i> Accueil</a>
         )}
         <span className="navbar-title"><i className="fas fa-map-marker-alt"></i> {commune.name}</span>
-        <button className="navbar-action" id="searchBtn" title="Rechercher">
+        <button className="navbar-action" title="Rechercher" onClick={() => setSearchOpen(true)}>
           <i className="fas fa-search"></i>
         </button>
       </nav>
 
       {/* SEARCH OVERLAY */}
-      <div className="search-overlay" id="searchOverlay">
+      <div className={`search-overlay${searchOpen ? ' open' : ''}`} onClick={e => { if (e.target === e.currentTarget) { setSearchOpen(false); setSearchQuery('') } }}>
         <div className="search-box">
           <div className="search-input-row">
             <i className="fas fa-search"></i>
-            <input type="text" id="searchInput" placeholder="Nom, médecin, adresse…" autoComplete="off" />
-            <button className="search-close" id="searchClose"><i className="fas fa-times"></i></button>
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Nom, médecin, adresse…"
+              autoComplete="off"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+            <button className="search-close" onClick={() => { setSearchOpen(false); setSearchQuery('') }}><i className="fas fa-times"></i></button>
           </div>
-          <div className="search-results" id="searchResults">
-            <div className="search-hint">
-              <i className="fas fa-pills"></i>
-              Tapez le nom d&apos;une pharmacie ou d&apos;un médecin
-            </div>
+          <div className="search-results">
+            {!q ? (
+              <div className="search-hint">
+                <i className="fas fa-pills"></i>
+                Tapez le nom d&apos;une pharmacie ou d&apos;un médecin
+              </div>
+            ) : matches.length === 0 ? (
+              <div style={{padding:'1.5rem',textAlign:'center',color:'var(--text-light)'}}>Aucun résultat pour «{searchQuery.trim()}»</div>
+            ) : (
+              <>
+                {gardesResults.length > 0 && <>
+                  <div className="sr-section-title"><i className="fas fa-circle-dot" style={{color:'var(--success)'}}></i> En garde cette semaine</div>
+                  {gardesResults.map(p => <SearchItem key={p.id} p={p} onClick={() => { setSearchOpen(false); setSearchQuery(''); setPharmModal(p) }} />)}
+                </>}
+                {autresResults.length > 0 && <>
+                  {gardesResults.length > 0 && <div className="sr-section-title" style={{marginTop:'.4rem'}}>Toutes les pharmacies</div>}
+                  {autresResults.map(p => <SearchItem key={p.id} p={p} onClick={() => { setSearchOpen(false); setSearchQuery(''); setPharmModal(p) }} />)}
+                </>}
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {/* PHARMACY MODAL */}
+      {pharmModal && <PharmModal p={pharmModal} onClose={() => setPharmModal(null)} />}
 
       {/* HERO */}
       <div className="commune-hero">
@@ -213,22 +266,22 @@ export default function CommunePage({ commune, nuitThisWeek, dimancheThisWeek, w
 
         {/* TABS */}
         <div className="tabs-wrap">
-          <button className="tab active" data-tab="today">
+          <button className={`tab${activeTab==='today' ? ' active' : ''}`} onClick={() => setActiveTab('today')}>
             <i className="fas fa-moon"></i> Cette semaine
             {nuitThisWeek.length > 0 && (
               <span style={{background:'var(--primary)',color:'white',borderRadius:'50px',padding:'.05rem .4rem',fontSize:'.7rem',minWidth:'18px',textAlign:'center'}}>{nuitThisWeek.length}</span>
             )}
           </button>
-          <button className="tab" data-tab="planning">
+          <button className={`tab${activeTab==='planning' ? ' active' : ''}`} onClick={() => setActiveTab('planning')}>
             <i className="fas fa-calendar-week"></i> Planning semaine
           </button>
-          <button className="tab" data-tab="all">
+          <button className={`tab${activeTab==='all' ? ' active' : ''}`} onClick={() => setActiveTab('all')}>
             <i className="fas fa-list"></i> Toutes ({allPharms.length})
           </button>
         </div>
 
         {/* ONGLET : Cette semaine */}
-        <div id="tab-today" className="tab-content active">
+        <div className={`tab-content${activeTab==='today' ? ' active' : ''}`}>
           <h2 className="section-title" style={{display:'flex',alignItems:'center',gap:'.6rem'}}>
             <i className="fas fa-moon" style={{color:'var(--primary)'}}></i>
             Gardes de nuit
@@ -313,7 +366,7 @@ export default function CommunePage({ commune, nuitThisWeek, dimancheThisWeek, w
         </div>
 
         {/* ONGLET : Planning semaine */}
-        <div id="tab-planning" className="tab-content">
+        <div className={`tab-content${activeTab==='planning' ? ' active' : ''}`}>
           <h2 className="section-title">
             <i className="fas fa-calendar-week"></i>
             Planning — semaine du {weekStart.getDate()} au {weekEnd.getDate()} {MOIS_FR[weekEnd.getMonth()+1]} {weekEnd.getFullYear()}
@@ -360,7 +413,7 @@ export default function CommunePage({ commune, nuitThisWeek, dimancheThisWeek, w
         </div>
 
         {/* ONGLET : Toutes */}
-        <div id="tab-all" className="tab-content">
+        <div className={`tab-content${activeTab==='all' ? ' active' : ''}`}>
           <h2 className="section-title"><i className="fas fa-list"></i> Toutes les pharmacies</h2>
           <div className="guard-grid">
             {allPharms.map(p => (
@@ -394,72 +447,89 @@ export default function CommunePage({ commune, nuitThisWeek, dimancheThisWeek, w
         <p style={{marginTop:'.6rem',opacity:.5}}>&copy; {new Date().getFullYear()} PharmaGuard Dakar</p>
       </footer>
 
-      <script dangerouslySetInnerHTML={{__html: `
-        const PHARMS = ${JSON.stringify(pharmsJs)};
-        const overlay = document.getElementById('searchOverlay');
-        const input   = document.getElementById('searchInput');
-        const results = document.getElementById('searchResults');
-        function openSearch(){overlay.classList.add('open');setTimeout(()=>input.focus(),80)}
-        function closeSearch(){overlay.classList.remove('open');input.value='';results.innerHTML='<div class="search-hint"><i class="fas fa-pills"></i>Tapez le nom d\\'une pharmacie ou d\\'un médecin</div>'}
-        document.getElementById('searchBtn').onclick=openSearch;
-        document.getElementById('searchClose').onclick=closeSearch;
-        overlay.addEventListener('click',e=>{if(e.target===overlay)closeSearch()});
-        document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSearch()});
-        function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-        function renderResults(q){
-          q=q.trim().toLowerCase();
-          if(!q){results.innerHTML='<div class="search-hint"><i class="fas fa-pills"></i>Tapez le nom d\\'une pharmacie ou d\\'un médecin</div>';return}
-          const matches=PHARMS.filter(p=>p.name.toLowerCase().includes(q)||p.doctor.toLowerCase().includes(q)||p.address.toLowerCase().includes(q));
-          if(!matches.length){results.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--text-light)">Aucun résultat pour «'+esc(q)+'»</div>';return}
-          const gardes=matches.filter(p=>p.garde),autres=matches.filter(p=>!p.garde);
-          let html='';
-          if(gardes.length){html+='<div class="sr-section-title"><i class="fas fa-circle-dot" style="color:var(--success)"></i> En garde cette semaine</div>';html+=gardes.map(itemHtml).join('')}
-          if(autres.length){if(gardes.length)html+='<div class="sr-section-title" style="margin-top:.4rem">Toutes les pharmacies</div>';html+=autres.map(itemHtml).join('')}
-          results.innerHTML=html;
-        }
-        function itemHtml(p){
-          const badge=p.garde==='nuit'?'<span class="sr-badge sr-badge-garde"><i class="fas fa-moon"></i> NUIT</span>':p.garde==='dimanche'?'<span class="sr-badge sr-badge-dim"><i class="fas fa-sun"></i> DIM.</span>':'';
-          return '<div class="sr-item" onclick=\\'selectPharm('+JSON.stringify(p).replace(/'/g,"\\\\'")+')\\'>'+
-            '<div class="sr-icon '+(p.garde?'garde':'')+'"><i class="fas fa-prescription-bottle-medical"></i></div>'+
-            '<div style="flex:1;min-width:0"><div class="sr-name">'+esc(p.name)+'</div>'+
-            '<div class="sr-meta">'+(p.doctor?'<i class="fas fa-user-md" style="margin-right:.3rem"></i>'+esc(p.doctor)+' · ':'')+esc(p.address||'—')+'</div></div>'+
-            badge+'</div>';
-        }
-        function selectPharm(p){closeSearch();showPharmModal(p)}
-        function showPharmModal(p){
-          const ex=document.getElementById('pharmModal');if(ex)ex.remove();
-          const mapsUrl=p.lat?'https://www.google.com/maps/dir/?api=1&destination='+p.lat+','+p.lng:null;
-          let gardeBlock='';
-          if(p.garde==='nuit'){const days=p.nuitDays&&p.nuitDays.length?p.nuitDays.join(' · '):'cette semaine';gardeBlock='<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem;display:flex;gap:.75rem;align-items:flex-start"><div style="width:34px;height:34px;border-radius:9px;background:var(--success);color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class=\\"fas fa-moon\\"></i></div><div><div style="font-weight:800;font-size:.88rem;color:#166534">EN GARDE DE NUIT cette semaine</div><div style="font-size:.78rem;color:#15803d;margin-top:.2rem">'+days+'</div></div></div>'}
-          else if(p.garde==='dimanche'){gardeBlock='<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem;display:flex;gap:.75rem;align-items:flex-start"><div style="width:34px;height:34px;border-radius:9px;background:#d97706;color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class=\\"fas fa-sun\\"></i></div><div><div style="font-weight:800;font-size:.88rem;color:#92400e">GARDE DU DIMANCHE</div><div style="font-size:.78rem;color:#b45309;margin-top:.2rem">'+(p.dimDate?'Le '+p.dimDate:'Ce weekend')+'</div></div></div>'}
-          else{gardeBlock='<div style="background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:12px;padding:.9rem 1rem;margin-bottom:1rem;display:flex;gap:.75rem;align-items:center"><div style="width:34px;height:34px;border-radius:9px;background:#e5e7eb;color:#9ca3af;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class=\\"fas fa-moon\\"></i></div><div><div style="font-weight:700;font-size:.88rem;color:#6b7280">Pas de garde cette semaine</div><div style="font-size:.76rem;color:#9ca3af;margin-top:.1rem">Consultez le planning pour la prochaine garde</div></div></div>'}
-          const modal=document.createElement('div');modal.id='pharmModal';
-          modal.style.cssText='position:fixed;inset:0;z-index:3000;background:rgba(0,30,60,.5);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center';
-          modal.innerHTML='<div style="background:white;width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:1.5rem 1.4rem 2rem;box-shadow:0 -8px 40px rgba(0,0,0,.2);animation:slideUp .25s cubic-bezier(.34,1.2,.64,1)">'+
-            '<div style="width:40px;height:4px;background:#e5e7eb;border-radius:4px;margin:0 auto 1.2rem"></div>'+
-            '<div style="display:flex;align-items:flex-start;gap:1rem;margin-bottom:1rem">'+
-            '<div style="width:48px;height:48px;border-radius:13px;background:var(--primary-light);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0"><i class=\\"fas fa-prescription-bottle-medical\\"></i></div>'+
-            '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:1.05rem;line-height:1.3">'+esc(p.name)+'</div>'+
-            (p.doctor?'<div style="font-size:.82rem;color:var(--primary);font-weight:600;margin-top:.2rem"><i class=\\"fas fa-user-md\\"></i> '+esc(p.doctor)+'</div>':'')+
-            '</div></div>'+gardeBlock+
-            (p.address?'<div style="display:flex;align-items:center;gap:.6rem;font-size:.86rem;color:#6b7280;margin-bottom:.5rem"><i class=\\"fas fa-location-dot\\" style=\\"color:var(--primary);width:16px;flex-shrink:0\\"></i>'+esc(p.address)+'</div>':'')+
-            (p.phone?'<div style="display:flex;align-items:center;gap:.6rem;font-size:.86rem;color:#6b7280;margin-bottom:1.2rem"><i class=\\"fas fa-phone\\" style=\\"color:var(--primary);width:16px;flex-shrink:0\\"></i>'+esc(p.phone)+'</div>':'<div style="margin-bottom:1.2rem"></div>')+
-            '<div style="display:flex;gap:.7rem">'+
-            (p.phone?'<a href=\\"tel:'+esc(p.phone)+'\\" style=\\"flex:1;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none;border-radius:12px;padding:.75rem;font-weight:700;font-size:.9rem;display:flex;align-items:center;justify-content:center;gap:.4rem;text-decoration:none\\"><i class=\\"fas fa-phone\\"></i> Appeler</a>':'')+
-            (mapsUrl?'<a href=\\"'+mapsUrl+'\\" target=\\"_blank\\" rel=\\"noopener\\" style=\\"flex:1;background:var(--primary-light);color:var(--primary-dark);border:none;border-radius:12px;padding:.75rem;font-weight:700;font-size:.9rem;display:flex;align-items:center;justify-content:center;gap:.4rem;text-decoration:none\\"><i class=\\"fas fa-directions\\"></i> Itinéraire</a>':'')+
-            '</div></div>';
-          modal.addEventListener('click',e=>{if(e.target===modal)modal.remove()});
-          document.body.appendChild(modal);
-        }
-        input.addEventListener('input',()=>renderResults(input.value));
-        document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',function(){
-          document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-          document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
-          this.classList.add('active');
-          document.getElementById('tab-'+this.dataset.tab).classList.add('active');
-        }));
-      `}} />
     </>
+  )
+}
+
+// ── Composants helper ────────────────────────────────────────────
+function SearchItem({ p, onClick }) {
+  return (
+    <div className="sr-item" onClick={onClick}>
+      <div className={`sr-icon${p.garde ? ' garde' : ''}`}><i className="fas fa-prescription-bottle-medical"></i></div>
+      <div style={{flex:1,minWidth:0}}>
+        <div className="sr-name">{p.name}</div>
+        <div className="sr-meta">
+          {p.doctor && <><i className="fas fa-user-md" style={{marginRight:'.3rem'}}></i>{p.doctor} · </>}
+          {p.address || '—'}
+        </div>
+      </div>
+      {p.garde === 'nuit'     && <span className="sr-badge sr-badge-garde"><i className="fas fa-moon"></i> NUIT</span>}
+      {p.garde === 'dimanche' && <span className="sr-badge sr-badge-dim"><i className="fas fa-sun"></i> DIM.</span>}
+    </div>
+  )
+}
+
+function PharmModal({ p, onClose }) {
+  const mapsUrl = p.lat ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}` : null
+  const nuitDaysStr = p.nuitDays && p.nuitDays.length ? p.nuitDays.join(' · ') : 'cette semaine'
+
+  return (
+    <div
+      style={{position:'fixed',inset:0,zIndex:3000,background:'rgba(0,30,60,.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'flex-end',justifyContent:'center'}}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{background:'white',width:'100%',maxWidth:520,borderRadius:'24px 24px 0 0',padding:'1.5rem 1.4rem 2rem',boxShadow:'0 -8px 40px rgba(0,0,0,.2)',animation:'slideUp .25s cubic-bezier(.34,1.2,.64,1)'}}>
+        {/* Handle bar */}
+        <div style={{width:40,height:4,background:'#e5e7eb',borderRadius:4,margin:'0 auto 1.2rem'}}></div>
+        {/* Header */}
+        <div style={{display:'flex',alignItems:'flex-start',gap:'1rem',marginBottom:'1rem'}}>
+          <div style={{width:48,height:48,borderRadius:13,background:'var(--primary-light)',color:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.2rem',flexShrink:0}}>
+            <i className="fas fa-prescription-bottle-medical"></i>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:800,fontSize:'1.05rem',lineHeight:1.3}}>{p.name}</div>
+            {p.doctor && <div style={{fontSize:'.82rem',color:'var(--primary)',fontWeight:600,marginTop:'.2rem'}}><i className="fas fa-user-md"></i> {p.doctor}</div>}
+          </div>
+        </div>
+        {/* Garde status */}
+        {p.garde === 'nuit' ? (
+          <div style={{background:'#f0fdf4',border:'1.5px solid #bbf7d0',borderRadius:12,padding:'.9rem 1rem',marginBottom:'1rem',display:'flex',gap:'.75rem',alignItems:'flex-start'}}>
+            <div style={{width:34,height:34,borderRadius:9,background:'var(--success)',color:'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><i className="fas fa-moon"></i></div>
+            <div>
+              <div style={{fontWeight:800,fontSize:'.88rem',color:'#166534'}}>EN GARDE DE NUIT cette semaine</div>
+              <div style={{fontSize:'.78rem',color:'#15803d',marginTop:'.2rem'}}>{nuitDaysStr}</div>
+            </div>
+          </div>
+        ) : p.garde === 'dimanche' ? (
+          <div style={{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:12,padding:'.9rem 1rem',marginBottom:'1rem',display:'flex',gap:'.75rem',alignItems:'flex-start'}}>
+            <div style={{width:34,height:34,borderRadius:9,background:'#d97706',color:'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><i className="fas fa-sun"></i></div>
+            <div>
+              <div style={{fontWeight:800,fontSize:'.88rem',color:'#92400e'}}>GARDE DU DIMANCHE</div>
+              <div style={{fontSize:'.78rem',color:'#b45309',marginTop:'.2rem'}}>{p.dimDate ? `Le ${p.dimDate}` : 'Ce weekend'}</div>
+            </div>
+          </div>
+        ) : (
+          <div style={{background:'#f9fafb',border:'1.5px solid #e5e7eb',borderRadius:12,padding:'.9rem 1rem',marginBottom:'1rem',display:'flex',gap:'.75rem',alignItems:'center'}}>
+            <div style={{width:34,height:34,borderRadius:9,background:'#e5e7eb',color:'#9ca3af',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><i className="fas fa-moon"></i></div>
+            <div>
+              <div style={{fontWeight:700,fontSize:'.88rem',color:'#6b7280'}}>Pas de garde cette semaine</div>
+              <div style={{fontSize:'.76rem',color:'#9ca3af',marginTop:'.1rem'}}>Consultez le planning pour la prochaine garde</div>
+            </div>
+          </div>
+        )}
+        {/* Address & phone */}
+        {p.address && <div style={{display:'flex',alignItems:'center',gap:'.6rem',fontSize:'.86rem',color:'#6b7280',marginBottom:'.5rem'}}><i className="fas fa-location-dot" style={{color:'var(--primary)',width:16,flexShrink:0}}></i>{p.address}</div>}
+        {p.phone
+          ? <div style={{display:'flex',alignItems:'center',gap:'.6rem',fontSize:'.86rem',color:'#6b7280',marginBottom:'1.2rem'}}><i className="fas fa-phone" style={{color:'var(--primary)',width:16,flexShrink:0}}></i>{p.phone}</div>
+          : <div style={{marginBottom:'1.2rem'}}></div>
+        }
+        {/* Actions */}
+        <div style={{display:'flex',gap:'.7rem'}}>
+          {p.phone && <a href={`tel:${p.phone}`} style={{flex:1,background:'linear-gradient(135deg,var(--primary),var(--primary-dark))',color:'white',border:'none',borderRadius:12,padding:'.75rem',fontWeight:700,fontSize:'.9rem',display:'flex',alignItems:'center',justifyContent:'center',gap:'.4rem',textDecoration:'none'}}><i className="fas fa-phone"></i> Appeler</a>}
+          {mapsUrl && <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={{flex:1,background:'var(--primary-light)',color:'var(--primary-dark)',border:'none',borderRadius:12,padding:'.75rem',fontWeight:700,fontSize:'.9rem',display:'flex',alignItems:'center',justifyContent:'center',gap:'.4rem',textDecoration:'none'}}><i className="fas fa-directions"></i> Itinéraire</a>}
+        </div>
+      </div>
+    </div>
   )
 }
 
