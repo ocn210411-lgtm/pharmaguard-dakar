@@ -280,28 +280,26 @@ export default function Dashboard({ adminInit, commune, pharmaciesInit, weeks4, 
           </div>
         </div>
 
-        {/* STATS */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon" style={{color:'var(--primary)'}}><i className="fas fa-pills"></i></div>
-            <div className="stat-val">{activePharms}</div>
-            <div className="stat-lbl">Pharmacies actives</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon" style={{color:'var(--success)'}}><i className="fas fa-moon"></i></div>
-            <div className="stat-val">{todayGuards.nuit.length}</div>
-            <div className="stat-lbl">Garde nuit auj.</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon" style={{color:'var(--warning)'}}><i className="fas fa-sun"></i></div>
-            <div className="stat-val">{todayGuards.dimanche.length}</div>
-            <div className="stat-lbl">Garde dim.</div>
-          </div>
-        </div>
-
         {/* ── OVERVIEW ── */}
         {tab === 'overview' && (
           <>
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon" style={{color:'var(--primary)'}}><i className="fas fa-pills"></i></div>
+                <div className="stat-val">{activePharms}</div>
+                <div className="stat-lbl">Pharmacies actives</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon" style={{color:'var(--success)'}}><i className="fas fa-moon"></i></div>
+                <div className="stat-val">{todayGuards.nuit.length}</div>
+                <div className="stat-lbl">Garde nuit auj.</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon" style={{color:'var(--warning)'}}><i className="fas fa-sun"></i></div>
+                <div className="stat-val">{todayGuards.dimanche.length}</div>
+                <div className="stat-lbl">Garde dim.</div>
+              </div>
+            </div>
             <div className="card">
               <div className="card-title"><i className="fas fa-moon" style={{color:'var(--primary)'}}></i> Garde de nuit — aujourd&apos;hui</div>
               {todayGuards.nuit.length ? (

@@ -281,56 +281,56 @@ export default function SuperDashboard({ adminInit, statsInit, communesInit, adm
           </div>
         </div>
 
-        {/* STATS */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon" style={{color:'var(--primary)'}}><i className="fas fa-map"></i></div>
-            <div className="stat-val">{stats.communes}</div>
-            <div className="stat-lbl">Communes actives</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon" style={{color:'var(--success)'}}><i className="fas fa-pills"></i></div>
-            <div className="stat-val">{stats.pharmacies}</div>
-            <div className="stat-lbl">Pharmacies actives</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon" style={{color:'var(--warning)'}}><i className="fas fa-users-cog"></i></div>
-            <div className="stat-val">{stats.admins}</div>
-            <div className="stat-lbl">Admins locaux</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon" style={{color:'var(--danger)'}}><i className="fas fa-moon"></i></div>
-            <div className="stat-val">{stats.guards}</div>
-            <div className="stat-lbl">En garde aujourd&apos;hui</div>
-          </div>
-        </div>
-
         {/* ── OVERVIEW ── */}
         {tab === 'overview' && (
-          <div className="card">
-            <div className="card-title"><i className="fas fa-map" style={{color:'var(--primary)'}}></i> Toutes les communes</div>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr><th>Commune</th><th>Slug</th><th>Pharmacies</th><th>En garde auj.</th><th>Statut</th><th>Actions</th></tr>
-                </thead>
-                <tbody>
-                  {communes.map(c => (
-                    <tr key={c.id}>
-                      <td data-label="Commune"><strong>{c.name}</strong></td>
-                      <td data-label="Slug"><code style={{background:'var(--primary-light)',padding:'.1rem .4rem',borderRadius:4,fontSize:'.78rem'}}>{c.slug}</code></td>
-                      <td data-label="Pharmacies"><span className="badge badge-blue">{c.nb_pharmacies}</span></td>
-                      <td data-label="En garde">{c.guards_today > 0 ? <span className="badge badge-green">{c.guards_today}</span> : <span style={{color:'var(--text-light)',fontSize:'.8rem'}}>—</span>}</td>
-                      <td data-label="Statut"><span className={`badge ${c.is_active ? 'badge-green' : 'badge-red'}`}>{c.is_active ? 'Active' : 'Inactive'}</span></td>
-                      <td data-label="Actions">
-                        {c.is_active && <button className="btn btn-sm btn-danger" onClick={() => disableCommune(c.id, c.name)}><i className="fas fa-ban"></i> Désactiver</button>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <>
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon" style={{color:'var(--primary)'}}><i className="fas fa-map"></i></div>
+                <div className="stat-val">{stats.communes}</div>
+                <div className="stat-lbl">Communes actives</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon" style={{color:'var(--success)'}}><i className="fas fa-pills"></i></div>
+                <div className="stat-val">{stats.pharmacies}</div>
+                <div className="stat-lbl">Pharmacies actives</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon" style={{color:'var(--warning)'}}><i className="fas fa-users-cog"></i></div>
+                <div className="stat-val">{stats.admins}</div>
+                <div className="stat-lbl">Admins locaux</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon" style={{color:'var(--danger)'}}><i className="fas fa-moon"></i></div>
+                <div className="stat-val">{stats.guards}</div>
+                <div className="stat-lbl">En garde aujourd&apos;hui</div>
+              </div>
             </div>
-          </div>
+            <div className="card">
+              <div className="card-title"><i className="fas fa-map" style={{color:'var(--primary)'}}></i> Toutes les communes</div>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr><th>Commune</th><th>Slug</th><th>Pharmacies</th><th>En garde auj.</th><th>Statut</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    {communes.map(c => (
+                      <tr key={c.id}>
+                        <td data-label="Commune"><strong>{c.name}</strong></td>
+                        <td data-label="Slug"><code style={{background:'var(--primary-light)',padding:'.1rem .4rem',borderRadius:4,fontSize:'.78rem'}}>{c.slug}</code></td>
+                        <td data-label="Pharmacies"><span className="badge badge-blue">{c.nb_pharmacies}</span></td>
+                        <td data-label="En garde">{c.guards_today > 0 ? <span className="badge badge-green">{c.guards_today}</span> : <span style={{color:'var(--text-light)',fontSize:'.8rem'}}>—</span>}</td>
+                        <td data-label="Statut"><span className={`badge ${c.is_active ? 'badge-green' : 'badge-red'}`}>{c.is_active ? 'Active' : 'Inactive'}</span></td>
+                        <td data-label="Actions">
+                          {c.is_active && <button className="btn btn-sm btn-danger" onClick={() => disableCommune(c.id, c.name)}><i className="fas fa-ban"></i> Désactiver</button>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
 
         {/* ── COMMUNES ── */}
