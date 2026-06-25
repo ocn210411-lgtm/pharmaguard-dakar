@@ -20,7 +20,8 @@ export default function AdminLogin() {
     const data = await res.json()
     setLoading(false)
     if (!res.ok) { setError(data.error || 'Erreur de connexion'); return }
-    router.push('/admin/local/dashboard')
+    if (data.role === 'super_admin') router.push('/admin/super/dashboard')
+    else router.push('/admin/local/dashboard')
   }
 
   return (
