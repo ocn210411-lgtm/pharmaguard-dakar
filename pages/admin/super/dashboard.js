@@ -6,8 +6,8 @@ import { getDB } from '../../../lib/db'
 const CSS = `
 :root{--primary:#00AEEF;--primary-dark:#0077b6;--primary-light:#e0f7ff;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--text:#1f2937;--text-light:#6b7280;--bg:#f0f9ff;--shadow:0 8px 24px rgba(0,174,239,.12);--radius:14px}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
-.sidebar{width:280px;background:linear-gradient(180deg,var(--primary),var(--primary-dark));color:white;padding:1.6rem;position:fixed;height:100%;z-index:900;display:flex;flex-direction:column;gap:.3rem;transition:.3s;overflow-y:auto}
+body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.sidebar{width:280px;background:linear-gradient(180deg,var(--primary),var(--primary-dark));color:white;padding:1.6rem;position:fixed;top:0;left:0;height:100%;z-index:900;display:flex;flex-direction:column;gap:.3rem;transition:.3s;overflow-y:auto}
 .sidebar-brand{font-size:1.25rem;font-weight:800;display:flex;align-items:center;gap:.6rem;margin-bottom:1.2rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,.2)}
 .super-badge{background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:8px;padding:.25rem .6rem;font-size:.72rem;font-weight:700;margin-top:.25rem;display:inline-block}
 .sidebar-prof{padding:1rem;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:12px;display:flex;align-items:center;gap:.85rem;margin-bottom:1.1rem}
@@ -19,7 +19,7 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);dis
 .nav-item.active{background:white;color:var(--primary-dark);font-weight:700}
 .nav-item.danger{color:#fca5a5}
 .sidebar-footer{margin-top:auto;display:flex;flex-direction:column;gap:.2rem;padding-top:.5rem}
-.main{margin-left:280px;flex:1;padding:2rem;min-height:100vh}
+.main{margin-left:280px;width:calc(100% - 280px);padding:2rem;min-height:100vh;box-sizing:border-box}
 .topbar{background:white;border-radius:var(--radius);padding:1.1rem 1.6rem;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow);margin-bottom:2rem}
 .topbar-title{font-weight:700;font-size:1.25rem}
 .burger{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:.25rem}
@@ -77,7 +77,7 @@ tbody tr:hover{background:var(--primary-light)}
 @media(max-width:900px){
   .sidebar{transform:translateX(-295px);width:295px}
   .sidebar.open{transform:translateX(0)}
-  .main{margin-left:0;padding:1rem}
+  .main{margin-left:0;width:100%;padding:1rem}
   .burger{display:flex}
   .overlay{display:block}
   .profile-grid{grid-template-columns:1fr}
@@ -147,11 +147,19 @@ export default function SuperDashboard({ adminInit, statsInit, communesInit, adm
     await reloadCommunes(); await reloadLogs()
     flash('Commune ajoutée !')
   }
-  async function disableCommune(id, name) {
-    if (!confirm(`Désactiver la commune "${name}" ?`)) return
-    const r = await fetch(`/api/admin/super/communes?id=${id}`, { method:'DELETE' })
-    if (r.ok) { await reloadCommunes(); flash('Commune désactivée') }
+  async function toggleCommune(id, name, currentlyActive) {
+    const action = currentlyActive ? 'désactiver' : 'activer'
+    if (!confirm(`Voulez-vous ${action} la commune "${name}" ?`)) return
+    const r = await fetch('/api/admin/super/communes', {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id, is_active: !currentlyActive })
+    })
+    if (r.ok) { await reloadCommunes(); flash(`Commune ${currentlyActive ? 'désactivée' : 'activée'} !`) }
     else flash('Erreur', 'err')
+  }
+  async function disableCommune(id, name) {
+    return toggleCommune(id, name, true)
   }
 
   // ── Admins ───────────────────────────────────────────────────
@@ -322,7 +330,12 @@ export default function SuperDashboard({ adminInit, statsInit, communesInit, adm
                         <td data-label="En garde">{c.guards_today > 0 ? <span className="badge badge-green">{c.guards_today}</span> : <span style={{color:'var(--text-light)',fontSize:'.8rem'}}>—</span>}</td>
                         <td data-label="Statut"><span className={`badge ${c.is_active ? 'badge-green' : 'badge-red'}`}>{c.is_active ? 'Active' : 'Inactive'}</span></td>
                         <td data-label="Actions">
-                          {c.is_active && <button className="btn btn-sm btn-danger" onClick={() => disableCommune(c.id, c.name)}><i className="fas fa-ban"></i> Désactiver</button>}
+                          <div style={{display:'flex',gap:'.4rem'}}>
+                            <a href={`/commune/${c.slug}`} target="_blank" rel="noopener" className="btn btn-sm btn-primary"><i className="fas fa-eye"></i> Voir</a>
+                            <button className={`btn btn-sm ${c.is_active ? 'btn-danger' : 'btn-success'}`} onClick={() => toggleCommune(c.id, c.name, c.is_active)}>
+                              <i className={`fas ${c.is_active ? 'fa-ban' : 'fa-check'}`}></i> {c.is_active ? 'Désactiver' : 'Activer'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -359,7 +372,12 @@ export default function SuperDashboard({ adminInit, statsInit, communesInit, adm
                         <td data-label="Pharmacies"><span className="badge badge-blue">{c.nb_pharmacies}</span></td>
                         <td data-label="Statut"><span className={`badge ${c.is_active ? 'badge-green' : 'badge-red'}`}>{c.is_active ? 'Active' : 'Inactive'}</span></td>
                         <td data-label="Actions">
-                          {c.is_active && <button className="btn btn-sm btn-danger" onClick={() => disableCommune(c.id, c.name)}><i className="fas fa-ban"></i> Désactiver</button>}
+                          <div style={{display:'flex',gap:'.4rem'}}>
+                            <a href={`/commune/${c.slug}`} target="_blank" rel="noopener" className="btn btn-sm btn-primary"><i className="fas fa-eye"></i> Voir</a>
+                            <button className={`btn btn-sm ${c.is_active ? 'btn-danger' : 'btn-success'}`} onClick={() => toggleCommune(c.id, c.name, c.is_active)}>
+                              <i className={`fas ${c.is_active ? 'fa-ban' : 'fa-check'}`}></i> {c.is_active ? 'Désactiver' : 'Activer'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

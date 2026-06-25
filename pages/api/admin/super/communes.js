@@ -54,7 +54,22 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── DELETE : désactiver une commune ──────────────────────────
+  // ── PUT : activer / désactiver une commune ───────────────────
+  if (req.method === 'PUT') {
+    const { id, is_active } = req.body
+    if (!id) return res.status(400).json({ error: 'id manquant' })
+    try {
+      await sql`UPDATE communes SET is_active = ${!!is_active} WHERE id = ${parseInt(id)}`
+      const action = is_active ? 'enable_commune' : 'disable_commune'
+      const label  = is_active ? 'activée' : 'désactivée'
+      try { await sql`INSERT INTO admin_logs (admin_id, action, details) VALUES (${session.admin.id}, ${action}, ${`Commune ${label} : id=${id}`})` } catch {}
+      return res.json({ ok: true })
+    } catch (e) {
+      return res.status(500).json({ error: e.message })
+    }
+  }
+
+  // ── DELETE : désactiver une commune (compat) ──────────────────
   if (req.method === 'DELETE') {
     const id = parseInt(req.query.id)
     if (!id) return res.status(400).json({ error: 'id manquant' })
